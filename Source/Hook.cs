@@ -11,11 +11,13 @@ namespace pzy.AO.Hook
         IHookInterface  _hookInterface  = null;
         LocalHook       _messageHook    = null;
         Stack<Byte[]>   _messageQueue   = new Stack<Byte[]>();
+        Int32           _processId      = 0;
 
         public Hook( RemoteHooking.IContext context, String channelName )
         {
+            _processId = RemoteHooking.GetCurrentProcessId();
             _hookInterface = RemoteHooking.IpcConnectClient<IHookInterface>( channelName );
-            _hookInterface.Ping( RemoteHooking.GetCurrentProcessId() );
+            _hookInterface.Ping( _processId );
         }
 
         public void Run( RemoteHooking.IContext context, String channelName )
@@ -35,18 +37,18 @@ namespace pzy.AO.Hook
             catch( Exception e )
             {
                 // report error to host process
-                _hookInterface.ReportException( e );
+                _hookInterface.ReportException( _processId, e );
 
                 return;
             }
 
             // notify host process about installed hook
-            _hookInterface.IsInstalled( RemoteHooking.GetCurrentProcessId() );
+            _hookInterface.IsInstalled( _processId );
 
             // wait for host process termination
             try
             {
-                while( _hookInterface.Ping( RemoteHooking.GetCurrentProcessId() ) )
+                while( _hookInterface.Ping( _processId ) )
                 {
                     Thread.Sleep( 50 );
 
@@ -55,7 +57,7 @@ namespace pzy.AO.Hook
                     {
                         while( _messageQueue.Count > 0 )
                         {
-                            _hookInterface.OnReceiveMessage( RemoteHooking.GetCurrentProcessId(), _messageQueue.Pop() );
+                            _hookInterface.OnReceiveMessage( _processId, _messageQueue.Pop() );
                         }
                     }
                 }
